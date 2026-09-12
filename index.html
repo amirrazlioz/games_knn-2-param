@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מעבדת KNN Classification: גיימינג ב-2D</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0f172a; color: #f8fafc; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        h1 { margin-bottom: 5px; color: #38bdf8; text-align: center; font-size: 2.2em; }
+        p.subtitle { margin-top: 0; color: #94a3b8; margin-bottom: 20px; text-align: center; font-size: 1.1em; }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .canvas-container {
+            flex: 1.3;
+            min-width: 380px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        canvas {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 12px;
+        }
+
+        .controls {
+            flex: 1;
+            min-width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .card {
+            background: #0f172a;
+            padding: 16px;
+            border-radius: 10px;
+            border: 1px solid #334155;
+        }
+
+        .card h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: #38bdf8;
+            font-size: 1.25em;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .input-group label {
+            flex: 1;
+            font-size: 0.95em;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        .input-group input, .input-group select {
+            width: 110px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #1e293b;
+            color: #fff;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+
+        .btn-group-inline {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.05em;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 5px;
+        }
+
+        .btn-primary { background: #0284c7; color: white; }
+        .btn-primary:hover { background: #0369a1; }
+        .btn-success { background: #16a34a; color: white; }
+        .btn-success:hover { background: #15803d; }
+        .btn-warning { background: #d97706; color: white; }
+        .btn-warning:hover { background: #b45309; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-danger:hover { background: #b91c1c; }
+
+        .metrics {
+            background: rgba(168, 85, 247, 0.1);
+            border-right: 5px solid #a855f7;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 1em;
+            line-height: 1.6;
+        }
+
+        .prediction-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid #334155;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 10px;
+            font-size: 1em;
+        }
+
+        .prediction-result {
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+
+        .instructions {
+            font-size: 0.9em;
+            color: #cbd5e1;
+            background: #0f172a;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px dashed #475569;
+            line-height: 1.4;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .class-legend {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 8px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+        .dot-red { background: #ef4444; }
+        .dot-green { background: #22c55e; }
+
+        .table-container {
+            max-height: 180px;
+            overflow-y: auto;
+            margin-top: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+            text-align: center;
+        }
+
+        th, td {
+            padding: 6px;
+            border-bottom: 1px solid #334155;
+        }
+
+        th { color: #38bdf8; position: sticky; top: 0; background: #0f172a; }
+
+        .table-input {
+            width: 55px;
+            padding: 4px;
+            border-radius: 4px;
+            border: 1px solid #475569;
+            background: #1e293b;
+            color: #fff;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .delete-btn {
+            color: #f87171;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎮 אלגוריתם המלצות גיימינג (KNN 2D)</h1>
+    <p class="subtitle">סיווג עם שני משתנים: (X1=קושי, X2=מולטיפלייר)</p>
+
+    <div class="container">
+        
+        <!-- אריח הגרף הדו-ממדי -->
+        <div class="canvas-container">
+            <canvas id="canvas2d" width="560" height="460"></canvas>
+
+            <div class="instructions">
+                ✨ <b>נקודה לבנה:</b> המשחק החדש לבדיקה.<br>
+                🔗 <b>קווים מקווקווים:</b> K המשחקים הדומים ביותר מההיסטוריה (בלחיצה על המלץ).<br>
+                🎨 <b>מחלקות סיווג:</b>
+                <div class="class-legend">
+                    <div class="legend-item"><span class="dot dot-green"></span>אהב (1)</div>
+                    <div class="legend-item"><span class="dot dot-red"></span>לא אהב (0)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- פאנל שליטה ונתונים -->
+        <div class="controls">
+            
+            <!-- פרמטר KNN -->
+            <div class="card">
+                <h3>⚙️ הגדרות KNN Classification</h3>
+                <div class="input-group">
+                    <label for="kValue">מספר השכנים הקרובים (K):</label>
+                    <input type="number" id="kValue" min="1" max="10" value="3" onchange="clearPrediction()">
+                </div>
+            </div>
+
+            <!-- הוספת משחק -->
+            <div class="card">
+                <h3>➕ הוספת משחק להיסטוריה</h3>
+                <div class="input-group">
+                    <label>שם המשחק:</label>
+                    <input type="text" id="inputName" value="Valorant" style="width: 110px;">
+                </div>
+                <div class="input-group">
+                    <label>קושי (X1, 1-10):</label>
+                    <input type="number" id="inputDifficulty" min="1" max="10" step="1" value="8">
+                </div>
+                <div class="input-group">
+                    <label>מולטיפלייר (X2, 1-10):</label>
+                    <input type="number" id="inputMultiplayer" min="1" max="10" step="1" value="9">
+                </div>
+                <div class="input-group">
+                    <label>חוויית שחקן (Y):</label>
+                    <select id="inputClass">
+                        <option value="1">אהב 🟩</option>
+                        <option value="0">לא אהב 🟥</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" onclick="addSample()">הוסף להיסטוריה</button>
+            </div>
+
+            <!-- בדיקת התאמה -->
+            <div class="card">
+                <h3>🔮 בדיקת התאמה למשחק חדש</h3>
+                <div class="input-group">
+                    <label>שם המשחק לבדיקה:</label>
+                    <input type="text" id="predName" value="Counter-Strike 2" style="width: 110px;" oninput="clearPrediction()">
+                </div>
+                <div class="input-group">
+                    <label>רמת קושי (X1, 1-10):</label>
+                    <input type="number" id="predDifficulty" min="1" max="10" step="1" value="8" oninput="clearPrediction()">
+                </div>
+                <div class="input-group">
+                    <label>מולטיפלייר (X2, 1-10):</label>
+                    <input type="number" id="predMultiplayer" min="1" max="10" step="1" value="10" oninput="clearPrediction()">
+                </div>
+                
+                <div class="btn-group-inline">
+                    <button class="btn btn-warning" onclick="previewGameOnGraph()">👁️ הצג בגרף</button>
+                    <button class="btn btn-success" onclick="executeClassification()">המלץ / נבא התאמה</button>
+                </div>
+
+                <div class="prediction-box">
+                    <div>המלצת המערכת:</div>
+                    <div class="prediction-result" id="predictionDisplay">לחץ על הכפתור לסיווג</div>
+                </div>
+            </div>
+
+            <!-- הצבעת השכנים -->
+            <div class="metrics">
+                <div><b>הצבעת השכנים (Majority Vote):</b></div>
+                <div id="knnInfoDisplay" style="color: #c084fc; font-weight: bold; font-size: 0.95em; margin-top: 4px;">לחץ על הכפתור להצגת השכנים הקרובים.</div>
+            </div>
+
+            <!-- טבלת נתונים -->
+            <div class="card">
+                <h3>📊 היסטוריית משחקים במדגם (<span id="sampleCount">0</span>)</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>משחק</th>
+                                <th>קושי (X1)</th>
+                                <th>מולטי (X2)</th>
+                                <th>חוויה (Y)</th>
+                                <th>מחק</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody"></tbody>
+                    </table>
+                </div>
+                <button class="btn btn-danger" style="margin-top: 8px;" onclick="resetData()">אפס היסטוריה</button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas2d');
+        const ctx = canvas.getContext('2d');
+
+        // נתונים ראשוניים ב-2D
+        let dataset = [
+            { id: 1, name: "Fortnite", x1: 6, x2: 9, y: 1 },
+            { id: 2, name: "FIFA / FC", x1: 5, x2: 9, y: 1 },
+            { id: 3, name: "Minecraft", x1: 3, x2: 6, y: 0 },
+            { id: 4, name: "Elden Ring", x1: 10, x2: 2, y: 0 },
+            { id: 5, name: "GTA V", x1: 5, x2: 8, y: 1 },
+            { id: 6, name: "Chess.com", x1: 9, x2: 5, y: 0 },
+            { id: 7, name: "Brawl Stars", x1: 4, x2: 8, y: 1 }
+        ];
+
+        let activeTargetPoint = null;
+        let nearestNeighbors = [];
+
+        const padding = 60;
+        const width = canvas.width;
+        const height = canvas.height;
+
+        function mapToCanvas(x1, x2) {
+            const px = padding + ((x1 - 1) / 9) * (width - 2 * padding);
+            const py = (height - padding) - ((x2 - 1) / 9) * (height - 2 * padding);
+            return { x: px, y: py };
+        }
+
+        function getClassColor(y) {
+            return y === 1 ? '#22c55e' : '#ef4444';
+        }
+
+        function calculateDistance(p1, p2) {
+            const d1 = (p1.x1 - p2.x1) / 10.0;
+            const d2 = (p1.x2 - p2.x2) / 10.0;
+            return Math.sqrt(d1 * d1 + d2 * d2);
+        }
+
+        function clearPrediction() {
+            activeTargetPoint = null;
+            nearestNeighbors = [];
+            const displayEl = document.getElementById('predictionDisplay');
+            displayEl.innerText = 'לחץ על הכפתור לסיווג';
+            displayEl.style.color = '#fff';
+            document.getElementById('knnInfoDisplay').innerText = 'לחץ על הכפתור להצגת השכנים הקרובים.';
+            render();
+        }
+
+        function previewGameOnGraph() {
+            const name = document.getElementById('predName').value || "משחק חדש";
+            const pr = parseFloat(document.getElementById('predDifficulty').value);
+            const pf = parseFloat(document.getElementById('predMultiplayer').value);
+
+            if (isNaN(pr) || isNaN(pf)) {
+                return;
+            }
+
+            nearestNeighbors = [];
+            activeTargetPoint = { name, x1: pr, x2: pf, predictedClass: null };
+
+            const displayEl = document.getElementById('predictionDisplay');
+            displayEl.innerText = 'מוצג בגרף (טרם סווג)';
+            displayEl.style.color = '#fbbf24';
+            document.getElementById('knnInfoDisplay').innerText = 'לחץ על "המלץ / נבא התאמה" כדי לחשב את השכנים הקרובים.';
+
+            render();
+        }
+
+        function executeClassification() {
+            const name = document.getElementById('predName').value || "משחק חדש";
+            const pr = parseFloat(document.getElementById('predDifficulty').value);
+            const pf = parseFloat(document.getElementById('predMultiplayer').value);
+            const k = parseInt(document.getElementById('kValue').value);
+
+            if (isNaN(pr) || isNaN(pf) || dataset.length === 0) {
+                document.getElementById('predictionDisplay').innerText = 'אין מספיק נתונים';
+                clearPrediction();
+                return;
+            }
+
+            const target = { x1: pr, x2: pf };
+
+            const distances = dataset.map(item => ({
+                point: item,
+                dist: calculateDistance(target, item)
+            }));
+
+            distances.sort((a, b) => a.dist - b.dist);
+
+            const actualK = Math.min(k, dataset.length);
+            nearestNeighbors = distances.slice(0, actualK);
+
+            let count1 = 0;
+            let count0 = 0;
+            nearestNeighbors.forEach(n => {
+                if (n.point.y === 1) count1++;
+                else count0++;
+            });
+
+            const predictedClass = count1 >= count0 ? 1 : 0;
+            activeTargetPoint = { name, x1: pr, x2: pf, predictedClass };
+
+            const displayEl = document.getElementById('predictionDisplay');
+            if (predictedClass === 1) {
+                displayEl.innerText = '🟩 יאהב את המשחק';
+                displayEl.style.color = '#22c55e';
+            } else {
+                displayEl.innerText = '🟥 לא יאהב את המשחק';
+                displayEl.style.color = '#ef4444';
+            }
+
+            const neighborNames = nearestNeighbors.map(n => n.point.name + ' (' + (n.point.y === 1 ? 'אהב 🟩' : 'לא אהב 🟥') + ')').join(', ');
+            document.getElementById('knnInfoDisplay').innerText = 
+                'מתוך ' + actualK + ' המשחקים הדומים ביותר:\n' +
+                'השכנים: ' + neighborNames + '\n' +
+                'תוצאה: ' + count1 + ' אהב vs ' + count0 + ' לא אהב';
+
+            render();
+        }
+
+        function updateSampleFeature(index, feature, value) {
+            const val = parseFloat(value);
+            if (!isNaN(val)) {
+                dataset[index][feature] = val;
+                clearPrediction();
+            }
+        }
+
+        function updateTable() {
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+            document.getElementById('sampleCount').innerText = dataset.length;
+
+            dataset.forEach((d, idx) => {
+                const tr = document.createElement('tr');
+                const classText = d.y === 1 ? '<span style="color:#22c55e;font-weight:bold;">אהב</span>' : '<span style="color:#f87171;font-weight:bold;">לא אהב</span>';
+                tr.innerHTML = `
+                    <td><b>${d.name}</b></td>
+                    <td><input type="number" class="table-input" min="1" max="10" step="1" value="${d.x1}" onchange="updateSampleFeature(${idx}, 'x1', this.value)"></td>
+                    <td><input type="number" class="table-input" min="1" max="10" step="1" value="${d.x2}" onchange="updateSampleFeature(${idx}, 'x2', this.value)"></td>
+                    <td>${classText}</td>
+                    <td><span class="delete-btn" onclick="removeSample(${idx})">✖</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function addSample() {
+            const name = document.getElementById('inputName').value || "משחק";
+            const x1 = parseFloat(document.getElementById('inputDifficulty').value);
+            const x2 = parseFloat(document.getElementById('inputMultiplayer').value);
+            const y = parseInt(document.getElementById('inputClass').value);
+
+            if (!isNaN(x1) && !isNaN(x2) && !isNaN(y)) {
+                dataset.push({ id: Date.now(), name, x1, x2, y });
+                updateTable();
+                clearPrediction();
+            }
+        }
+
+        function removeSample(index) {
+            dataset.splice(index, 1);
+            updateTable();
+            clearPrediction();
+        }
+
+        function resetData() {
+            dataset = [];
+            clearPrediction();
+            document.getElementById('knnInfoDisplay').innerText = 'אין נתונים בהיסטוריה.';
+            updateTable();
+        }
+
+        function drawLabel(text, x, y, color) {
+            ctx.font = 'bold 13px Segoe UI, sans-serif';
+            ctx.textAlign = 'left';
+            const textWidth = ctx.measureText(text).width;
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+            ctx.fillRect(x - 4, y - 13, textWidth + 8, 16);
+            ctx.fillStyle = color;
+            ctx.fillText(text, x, y);
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // גריד וצירים
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+
+            for (let i = 1; i <= 10; i++) {
+                const ptX = mapToCanvas(i, 1);
+                const ptY = mapToCanvas(1, i);
+
+                ctx.beginPath(); ctx.moveTo(ptX.x, padding); ctx.lineTo(ptX.x, height - padding); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(padding, ptY.y); ctx.lineTo(width - padding, ptY.y); ctx.stroke();
+
+                ctx.fillStyle = '#64748b';
+                ctx.font = '11px Segoe UI';
+                ctx.fillText(i, ptX.x - 3, height - padding + 18);
+                ctx.fillText(i, padding - 22, ptY.y + 4);
+            }
+
+            // צירים ראשיים
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(padding, height - padding); ctx.lineTo(width - padding, height - padding); ctx.stroke();
+
+            ctx.strokeStyle = '#c084fc';
+            ctx.beginPath(); ctx.moveTo(padding, height - padding); ctx.lineTo(padding, padding); ctx.stroke();
+
+            // כיתובי הצירים
+            drawLabel('קושי (X1)', width - padding - 70, height - padding + 38, '#38bdf8');
+            drawLabel('מולטיפלייר (X2)', padding + 8, padding - 18, '#c084fc');
+
+            // נקודת חיזוי או תצוגה מקדימה
+            if (activeTargetPoint) {
+                const ptTarget = mapToCanvas(activeTargetPoint.x1, activeTargetPoint.x2);
+
+                if (nearestNeighbors.length > 0) {
+                    nearestNeighbors.forEach(n => {
+                        const ptNeighbor = mapToCanvas(n.point.x1, n.point.x2);
+
+                        ctx.strokeStyle = '#a855f7';
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([5, 5]);
+                        ctx.beginPath();
+                        ctx.moveTo(ptTarget.x, ptTarget.y);
+                        ctx.lineTo(ptNeighbor.x, ptNeighbor.y);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+
+                        ctx.strokeStyle = getClassColor(n.point.y);
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.arc(ptNeighbor.x, ptNeighbor.y, 12, 0, Math.PI * 2);
+                        ctx.stroke();
+                    });
+                }
+
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(ptTarget.x, ptTarget.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                const borderColor = activeTargetPoint.predictedClass !== null ? getClassColor(activeTargetPoint.predictedClass) : '#fbbf24';
+                ctx.strokeStyle = borderColor;
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                drawLabel('❓ ' + activeTargetPoint.name, ptTarget.x + 12, ptTarget.y + 4, '#ffffff');
+            }
+
+            // נקודות המדגם
+            dataset.forEach(d => {
+                const pt = mapToCanvas(d.x1, d.x2);
+
+                ctx.fillStyle = getClassColor(d.y);
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                drawLabel(d.name, pt.x + 10, pt.y + 4, '#cbd5e1');
+            });
+        }
+
+        updateTable();
+        render();
+    </script>
+</body>
+</html>
